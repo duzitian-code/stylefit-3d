@@ -1,0 +1,1 @@
+"""TripoSR optional open-source reconstruction worker."""

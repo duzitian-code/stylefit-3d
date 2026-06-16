@@ -1,0 +1,32 @@
+services:
+  reconstruction-api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    environment:
+      PORT: 8787
+      AVATAR_RECONSTRUCTION_PROVIDER: stylefit
+      STYLEFIT_AVATAR_WORKER_URL: http://stylefit-avatar-worker:8791
+      CORS_ORIGIN: http://localhost:8082
+    ports:
+      - "8787:8787"
+    depends_on:
+      - stylefit-avatar-worker
+
+  stylefit-avatar-worker:
+    build:
+      context: ..
+      dockerfile: workers/stylefit_avatar/Dockerfile
+    environment:
+      STYLEFIT_AVATAR_ENABLE_PARAMETRIC_MVP: "1"
+      STYLEFIT_AVATAR_ENABLE_DEV_BASELINE: "0"
+      STYLEFIT_AVATAR_OUTPUT_DIR: /data/stylefit-avatar-output
+      STYLEFIT_AVATAR_PUBLIC_MODEL_BASE_URL: http://localhost:8791/models
+      CORS_ORIGIN: http://localhost:8082
+    ports:
+      - "8791:8791"
+    volumes:
+      - stylefit-avatar-output:/data/stylefit-avatar-output
+
+volumes:
+  stylefit-avatar-output:

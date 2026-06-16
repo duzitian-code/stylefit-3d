@@ -1,0 +1,64 @@
+{
+  "name": "StyleFit AI Digital Human Model Bundle",
+  "version": "0.2.0",
+  "pipelineType": "stylefit-ecommerce-digital-human",
+  "allowProductionUse": false,
+  "licenseReview": "Fill this before production. Every runner, weight, dataset, and body/face prior must be self-owned or commercially cleared for virtual try-on.",
+  "rig": "smplx",
+  "qualityGates": {
+    "minIdentitySimilarity": 0.86,
+    "maxBodyMeasurementErrorCm": 2.5,
+    "minTextureResolution": 2048,
+    "requiresNoWatermark": true,
+    "requiresCommercialConsent": true
+  },
+  "stages": {
+    "imageQuality": {
+      "runner": "runners/image_quality.py",
+      "weights": "weights/quality_gate.onnx",
+      "config": "configs/image_quality.json"
+    },
+    "portraitMatting": {
+      "runner": "runners/portrait_matting.py",
+      "weights": ["weights/human_matting.onnx", "weights/human_parser.onnx"],
+      "config": "configs/portrait_matting.json"
+    },
+    "bodyLandmarks": {
+      "runner": "runners/body_landmarks.py",
+      "weights": ["weights/body_keypoints.onnx", "weights/dense_pose.onnx"]
+    },
+    "bodyShapeFit": {
+      "runner": "runners/body_shape_fit.py",
+      "weights": "weights/body_shape_regressor.onnx",
+      "assets": ["priors/body_prior.bin", "priors/smplx_template.glb"]
+    },
+    "faceIdentity": {
+      "runner": "runners/face_identity.py",
+      "weights": ["weights/face_identity_encoder.onnx", "weights/face_detail_decoder.onnx"],
+      "assets": "priors/face_topology.glb"
+    },
+    "hairReconstruction": {
+      "runner": "runners/hair_reconstruction.py",
+      "weights": "weights/hair_volume.onnx",
+      "assets": "priors/hair_cards.json"
+    },
+    "garmentAndMaterial": {
+      "runner": "runners/garment_material.py",
+      "weights": ["weights/garment_parser.onnx", "weights/material_estimator.onnx"],
+      "config": "configs/material_pbr.json"
+    },
+    "neuralTextureBake": {
+      "runner": "runners/neural_texture_bake.py",
+      "weights": "weights/texture_baker.onnx",
+      "config": "configs/texture_export.json"
+    },
+    "rigAndRetarget": {
+      "runner": "runners/rig_and_retarget.py",
+      "assets": ["rigs/stylefit_smplx_rig.json", "rigs/mobile_retarget_profile.json"]
+    },
+    "assetExport": {
+      "runner": "runners/export_mobile_assets.py",
+      "config": "configs/glb_usdz_export.json"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+"""StyleFit self-developed avatar reconstruction worker."""

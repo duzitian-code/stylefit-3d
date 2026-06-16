@@ -1,0 +1,32 @@
+{
+  "pipelineType": "stylefit-parametric-preview-bundle",
+  "version": "0.1.0",
+  "allowCommercialPreviewUse": false,
+  "baseAvatarGlb": "mannequins/default.glb",
+  "baseMeshes": {
+    "female": "mannequins/female.glb",
+    "male": "mannequins/male.glb",
+    "nonBinary": "mannequins/neutral.glb",
+    "default": "mannequins/default.glb"
+  },
+  "variants": {
+    "female:relaxed": "mannequins/female-relaxed.glb",
+    "female:regular": "mannequins/female-regular.glb",
+    "female:tailored": "mannequins/female-tailored.glb",
+    "male:relaxed": "mannequins/male-relaxed.glb",
+    "male:regular": "mannequins/male-regular.glb",
+    "male:tailored": "mannequins/male-tailored.glb",
+    "nonBinary:relaxed": "mannequins/nonBinary-relaxed.glb",
+    "nonBinary:regular": "mannequins/nonBinary-regular.glb",
+    "nonBinary:tailored": "mannequins/nonBinary-tailored.glb",
+    "default:relaxed": "mannequins/default-relaxed.glb",
+    "default:regular": "mannequins/default-regular.glb",
+    "default:tailored": "mannequins/default-tailored.glb"
+  },
+  "qualityGates": {
+    "assetLicense": "owned-or-commercially-cleared",
+    "identityMode": "non-identity-preview-mannequin",
+    "variantStrategy": "gender-plus-fit-preference",
+    "requiresCommercialConsent": true
+  }
+}

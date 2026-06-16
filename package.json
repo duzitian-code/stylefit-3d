@@ -3,10 +3,21 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@types/three": "^0.166.0",
     "expo": "~56.0.12",
+    "expo-asset": "~56.0.17",
+    "expo-gl": "~56.0.5",
+    "expo-image-picker": "~56.0.18",
+    "expo-linear-gradient": "~56.0.4",
     "expo-status-bar": "~56.0.4",
+    "expo-three": "^8.0.0",
+    "lucide-react-native": "^1.18.0",
     "react": "19.2.3",
-    "react-native": "0.85.3"
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
+    "three": "^0.166.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -16,7 +27,12 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "reconstruction:api": "node server/reconstruction-api.mjs",
+    "reconstruction:bundle:bootstrap": "python3 -m workers.stylefit_avatar.create_parametric_bundle",
+    "reconstruction:worker:stylefit": "uvicorn workers.stylefit_avatar.worker:app --host 0.0.0.0 --port 8791",
+    "reconstruction:worker:stylefit:parametric": "STYLEFIT_AVATAR_ENABLE_PARAMETRIC_MVP=1 uvicorn workers.stylefit_avatar.worker:app --host 0.0.0.0 --port 8791",
+    "reconstruction:worker:triposr": "uvicorn workers.triposr.worker:app --host 0.0.0.0 --port 8790"
   },
   "private": true
 }
