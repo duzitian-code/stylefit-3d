@@ -1,4 +1,4 @@
-import type { BodyProfile, ClothingItem, ProductRecommendation, WeatherSnapshot } from '../types';
+import type { BodyProfile, ClothingItem, GarmentPreviewAsset, ProductRecommendation, WeatherSnapshot } from '../types';
 
 const demoImages = {
   avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=512&q=80',
@@ -42,6 +42,10 @@ export const initialProfile: BodyProfile = {
   avatarDigitalHumanAssetKey: 'female:regular',
 };
 
+function garmentPreviewAsset(asset: GarmentPreviewAsset): GarmentPreviewAsset {
+  return asset;
+}
+
 export const wardrobeSeed: ClothingItem[] = [
   {
     id: 'linen-shirt',
@@ -56,6 +60,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.linenShirt,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:linen-shirt',
+      source: 'stylefit-procedural-preview',
+      layer: 'base',
+      attachment: 'torso',
+      shape: 'shirt',
+      length: 'regular',
+      sleeveLength: 'short',
+      fitAllowance: 0.05,
+      renderOrder: 1,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'knit-polo',
@@ -70,6 +86,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.knitTop,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:knit-polo',
+      source: 'stylefit-procedural-preview',
+      layer: 'base',
+      attachment: 'torso',
+      shape: 'shirt',
+      length: 'regular',
+      sleeveLength: 'short',
+      fitAllowance: 0.04,
+      renderOrder: 2,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'wide-trousers',
@@ -84,6 +112,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.trousers,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:wide-trousers',
+      source: 'stylefit-procedural-preview',
+      layer: 'base',
+      attachment: 'legs',
+      shape: 'trouser',
+      length: 'full',
+      sleeveLength: 'none',
+      fitAllowance: 0.08,
+      renderOrder: 3,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'tech-skirt',
@@ -98,6 +138,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.skirt,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:tech-skirt',
+      source: 'stylefit-procedural-preview',
+      layer: 'base',
+      attachment: 'legs',
+      shape: 'skirt',
+      length: 'regular',
+      sleeveLength: 'none',
+      fitAllowance: 0.07,
+      renderOrder: 4,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'rain-shell',
@@ -112,6 +164,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.jacket,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:rain-shell',
+      source: 'stylefit-procedural-preview',
+      layer: 'outer',
+      attachment: 'shoulders',
+      shape: 'jacket',
+      length: 'longline',
+      sleeveLength: 'long',
+      fitAllowance: 0.1,
+      renderOrder: 5,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'tailored-blazer',
@@ -126,6 +190,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.closetRack,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:tailored-blazer',
+      source: 'stylefit-procedural-preview',
+      layer: 'outer',
+      attachment: 'shoulders',
+      shape: 'jacket',
+      length: 'regular',
+      sleeveLength: 'long',
+      fitAllowance: 0.06,
+      renderOrder: 6,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'white-sneakers',
@@ -140,6 +216,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.sneakers,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:red-sneakers',
+      source: 'stylefit-procedural-preview',
+      layer: 'footwear',
+      attachment: 'feet',
+      shape: 'shoe',
+      length: 'regular',
+      sleeveLength: 'none',
+      fitAllowance: 0.02,
+      renderOrder: 7,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'loafers',
@@ -154,6 +242,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.loafers,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:loafers',
+      source: 'stylefit-procedural-preview',
+      layer: 'footwear',
+      attachment: 'feet',
+      shape: 'shoe',
+      length: 'regular',
+      sleeveLength: 'none',
+      fitAllowance: 0.02,
+      renderOrder: 8,
+      commercialUse: 'self-authored-preview',
+    }),
   },
   {
     id: 'silk-scarf',
@@ -168,6 +268,18 @@ export const wardrobeSeed: ClothingItem[] = [
     modelStatus: 'generated',
     imageUri: demoImages.bag,
     reconstructionStatus: 'sample',
+    garmentPreviewAsset: garmentPreviewAsset({
+      assetKey: 'stylefit-preview:structured-bag',
+      source: 'stylefit-procedural-preview',
+      layer: 'accessory',
+      attachment: 'hand',
+      shape: 'bag',
+      length: 'regular',
+      sleeveLength: 'none',
+      fitAllowance: 0,
+      renderOrder: 9,
+      commercialUse: 'self-authored-preview',
+    }),
   },
 ];
 

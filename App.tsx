@@ -41,6 +41,7 @@ import { ProductCard } from './src/components/ProductCard';
 import { SectionHeader } from './src/components/SectionHeader';
 import { WardrobeCard } from './src/components/WardrobeCard';
 import { initialProfile, previewBundleModels, productCatalog, wardrobeSeed, weatherOptions } from './src/data/mockData';
+import { itemHasRenderableGarment, outfitGarmentCoverage } from './src/logic/garmentAssets';
 import { submitAvatarReconstruction } from './src/logic/reconstructionClient';
 import { bodyBalanceLabel, calculateBmi, generateOutfit, recommendProducts } from './src/logic/recommendations';
 import { colors, radius, spacing } from './src/theme';
@@ -241,8 +242,7 @@ function avatarAssetDetail(profile: BodyProfile) {
 }
 
 function outfitCoverage(outfit: Outfit) {
-  const readyItems = outfit.items.filter((item) => item.garmentModelUri || item.reconstructionStatus === 'ready' || item.reconstructionStatus === 'sample');
-  return `${readyItems.length}/${Math.max(outfit.items.length, 1)} 件`;
+  return outfitGarmentCoverage(outfit).label;
 }
 
 function productionGateLabel(profile: BodyProfile) {
@@ -273,7 +273,7 @@ function tryOnQualityScore(profile: BodyProfile, outfit: Outfit) {
           : profile.avatarModelProvenance === 'stylefit-dev-baseline'
             ? 8
             : 0;
-  const garmentReady = outfit.items.filter((item) => item.garmentModelUri || item.reconstructionStatus === 'ready' || item.reconstructionStatus === 'sample').length;
+  const garmentReady = outfit.items.filter(itemHasRenderableGarment).length;
   const garmentBoost = (garmentReady / Math.max(outfit.items.length, 1)) * 12;
   const fitBoost = profile.fitPreference === 'tailored' ? 5 : profile.fitPreference === 'regular' ? 4 : 3;
   const textureBoost = profile.faceTextureUri ? 7 : 0;
@@ -303,6 +303,8 @@ function tryOnQualityLabel(score: number) {
 }
 
 function buildTryOnSignals(profile: BodyProfile, outfit: Outfit, weather: WeatherSnapshot): TryOnSignal[] {
+  const garmentCoverage = outfitGarmentCoverage(outfit);
+
   return [
     {
       label: '数字人资产',
@@ -313,8 +315,8 @@ function buildTryOnSignals(profile: BodyProfile, outfit: Outfit, weather: Weathe
     },
     {
       label: '服装覆盖',
-      value: outfitCoverage(outfit),
-      detail: outfit.items.length >= 4 ? '当前造型完整' : '单品层次偏少',
+      value: garmentCoverage.label,
+      detail: garmentCoverage.detail,
       Icon: Shirt,
       accent: colors.denim,
     },

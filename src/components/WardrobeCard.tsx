@@ -30,6 +30,10 @@ function modelLabel(item: ClothingItem) {
     return '3D 模型';
   }
 
+  if (item.garmentPreviewAsset) {
+    return item.garmentPreviewAsset.source === 'stylefit-procedural-preview' ? '3D 预览层' : '资产预览';
+  }
+
   if (item.reconstructionStatus === 'sample') {
     return '样例模型';
   }

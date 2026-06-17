@@ -14,6 +14,33 @@ export type ModelAssetSource = string | number;
 
 export type AvatarModelProvenance = 'stylefit-digital-human' | 'stylefit-production' | 'stylefit-parametric-digital-human' | 'stylefit-dev-baseline' | 'sample';
 
+export type GarmentPreviewSource = 'stylefit-procedural-preview' | 'provider-glb' | 'uploaded-scan';
+
+export type GarmentPreviewLayer = 'base' | 'middle' | 'outer' | 'footwear' | 'accessory';
+
+export type GarmentAttachment = 'torso' | 'legs' | 'shoulders' | 'feet' | 'hand';
+
+export type ProceduralGarmentShape = 'shirt' | 'trouser' | 'skirt' | 'jacket' | 'shoe' | 'bag';
+
+export type GarmentLength = 'cropped' | 'regular' | 'longline' | 'full';
+
+export type GarmentSleeveLength = 'none' | 'short' | 'long';
+
+export type GarmentCommercialUse = 'self-authored-preview' | 'licensed' | 'requires-review';
+
+export type GarmentPreviewAsset = {
+  assetKey: string;
+  source: GarmentPreviewSource;
+  layer: GarmentPreviewLayer;
+  attachment: GarmentAttachment;
+  shape: ProceduralGarmentShape;
+  length: GarmentLength;
+  sleeveLength: GarmentSleeveLength;
+  fitAllowance: number;
+  renderOrder: number;
+  commercialUse: GarmentCommercialUse;
+};
+
 export type BodyProfile = {
   gender: Gender;
   heightCm: number;
@@ -57,6 +84,7 @@ export type ClothingItem = {
   reconstructionStatus?: ReconstructionStatus;
   garmentModelUri?: string;
   garmentTextureUri?: string;
+  garmentPreviewAsset?: GarmentPreviewAsset;
 };
 
 export type Outfit = {

@@ -6,6 +6,7 @@ import { Renderer } from 'expo-three';
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { BodyProfile, ModelAssetSource, Outfit } from '../types';
+import { getRenderableGarmentLayers, type RenderableGarmentLayer } from '../logic/garmentAssets';
 import { colors, radius, spacing } from '../theme';
 
 type TryOnModel3DProps = {
@@ -200,6 +201,206 @@ function fitAvatarToStage(object: THREE.Object3D, targetHeight = 3.05) {
   object.position.y += -1.58 - fittedBox.min.y;
 }
 
+function fabricMaterial(layer: RenderableGarmentLayer, opacity = 0.9) {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(layer.primaryColor),
+    roughness: 0.84,
+    metalness: 0.02,
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide,
+    depthWrite: opacity >= 0.96,
+  });
+}
+
+function accentMaterial(layer: RenderableGarmentLayer, opacity = 0.94) {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(layer.secondaryColor),
+    roughness: 0.78,
+    metalness: 0.03,
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide,
+    depthWrite: opacity >= 0.96,
+  });
+}
+
+function trimMaterial(color = '#17202A', opacity = 0.32) {
+  return new THREE.MeshBasicMaterial({
+    color: new THREE.Color(color),
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+}
+
+function addGarmentMesh(group: THREE.Group, mesh: THREE.Mesh, layer: RenderableGarmentLayer) {
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.renderOrder = layer.renderOrder;
+  group.add(mesh);
+  return mesh;
+}
+
+function addBox(
+  group: THREE.Group,
+  layer: RenderableGarmentLayer,
+  size: [number, number, number],
+  position: [number, number, number],
+  material: THREE.Material,
+) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), material);
+  mesh.position.set(position[0], position[1], position[2]);
+  return addGarmentMesh(group, mesh, layer);
+}
+
+function addCylinderBetween(
+  group: THREE.Group,
+  layer: RenderableGarmentLayer,
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+  radiusTop: number,
+  radiusBottom: number,
+  material: THREE.Material,
+) {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const length = direction.length();
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, length, 28, 1, false), material);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  return addGarmentMesh(group, mesh, layer);
+}
+
+function addTorsoLayer(group: THREE.Group, layer: RenderableGarmentLayer) {
+  const isOuter = layer.asset.shape === 'jacket';
+  const isLongline = layer.asset.length === 'longline';
+  const isCropped = layer.asset.length === 'cropped';
+  const width = layer.widthScale * (isOuter ? 1.08 : 1);
+  const height = (isOuter ? (isLongline ? 1.22 : 1.02) : isCropped ? 0.68 : 0.9) * layer.heightScale;
+  const centerY = isOuter ? (isLongline ? 0.02 : 0.16) : isCropped ? 0.36 : 0.25;
+  const topRadius = (isOuter ? 0.43 : 0.36) * width;
+  const bottomRadius = (isOuter ? 0.45 : isCropped ? 0.34 : 0.38) * width;
+  const opacity = isOuter ? 0.78 : 0.9;
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(topRadius, bottomRadius, height, 52, 1, true), fabricMaterial(layer, opacity));
+  shell.position.set(0, centerY, 0.02);
+  addGarmentMesh(group, shell, layer);
+
+  const frontZ = Math.max(topRadius, bottomRadius) + 0.025;
+  addBox(group, layer, [0.026, height * 0.72, 0.035], [0, centerY + height * 0.02, frontZ], trimMaterial('#FFFFFF', isOuter ? 0.36 : 0.44));
+  addBox(group, layer, [bottomRadius * 1.55, 0.028, 0.032], [0, centerY - height * 0.5 + 0.025, bottomRadius + 0.018], trimMaterial(layer.secondaryColor, 0.5));
+
+  if (isOuter) {
+    const leftLapel = addBox(group, layer, [0.055, height * 0.44, 0.04], [-0.12 * width, centerY + 0.1, frontZ + 0.012], accentMaterial(layer, 0.86));
+    leftLapel.rotation.z = -0.14;
+    const rightLapel = addBox(group, layer, [0.055, height * 0.44, 0.04], [0.12 * width, centerY + 0.1, frontZ + 0.012], accentMaterial(layer, 0.86));
+    rightLapel.rotation.z = 0.14;
+  } else {
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.15 * width, 0.012, 8, 36), accentMaterial(layer, 0.88));
+    collar.rotation.x = Math.PI / 2;
+    collar.scale.y = 0.56;
+    collar.position.set(0, centerY + height * 0.5 - 0.035, 0.035);
+    addGarmentMesh(group, collar, layer);
+  }
+
+  const sleeveEndY = layer.asset.sleeveLength === 'long' ? -0.32 : centerY + height * 0.22;
+  const sleeveEndX = layer.asset.sleeveLength === 'long' ? topRadius + 0.2 : topRadius + 0.34;
+  const sleeveRadius = (isOuter ? 0.105 : 0.088) * width;
+  addCylinderBetween(
+    group,
+    layer,
+    new THREE.Vector3(-topRadius * 0.95, centerY + height * 0.33, 0.005),
+    new THREE.Vector3(-sleeveEndX, sleeveEndY, 0.015),
+    sleeveRadius,
+    sleeveRadius * 0.92,
+    fabricMaterial(layer, opacity),
+  );
+  addCylinderBetween(
+    group,
+    layer,
+    new THREE.Vector3(topRadius * 0.95, centerY + height * 0.33, 0.005),
+    new THREE.Vector3(sleeveEndX, sleeveEndY, 0.015),
+    sleeveRadius,
+    sleeveRadius * 0.92,
+    fabricMaterial(layer, opacity),
+  );
+}
+
+function addBottomLayer(group: THREE.Group, layer: RenderableGarmentLayer) {
+  const width = layer.widthScale;
+
+  if (layer.asset.shape === 'skirt') {
+    const height = 0.78 * layer.heightScale;
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * width, 0.5 * width, height, 52, 1, true), fabricMaterial(layer, 0.88));
+    skirt.position.set(0, -0.66, 0.02);
+    addGarmentMesh(group, skirt, layer);
+    addBox(group, layer, [0.68 * width, 0.045, 0.055], [0, -0.28, 0.28 * width + 0.02], accentMaterial(layer, 0.84));
+    return;
+  }
+
+  const legHeight = 1.02 * layer.heightScale;
+  const centerY = -0.86;
+  const legOffset = 0.19 * width;
+  const topRadius = 0.155 * width;
+  const bottomRadius = 0.115 * width;
+  [-1, 1].forEach((side) => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(topRadius, bottomRadius, legHeight, 36, 1, false), fabricMaterial(layer, 0.9));
+    leg.position.set(side * legOffset, centerY, 0.015);
+    addGarmentMesh(group, leg, layer);
+    addBox(group, layer, [0.014, legHeight * 0.78, 0.026], [side * legOffset, centerY - 0.02, bottomRadius + 0.03], trimMaterial('#FFFFFF', 0.28));
+  });
+  addBox(group, layer, [0.7 * width, 0.05, 0.06], [0, -0.34, 0.26], accentMaterial(layer, 0.82));
+}
+
+function addFootwearLayer(group: THREE.Group, layer: RenderableGarmentLayer) {
+  const width = layer.widthScale;
+  [-1, 1].forEach((side) => {
+    const shoe = addBox(group, layer, [0.28 * width, 0.12, 0.48], [side * 0.2 * width, -1.5, 0.16], fabricMaterial(layer, 0.96));
+    shoe.rotation.y = side * 0.04;
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.14 * width, 18, 10), accentMaterial(layer, 0.96));
+    toe.scale.set(0.9, 0.38, 1.16);
+    toe.position.set(side * 0.2 * width, -1.48, 0.39);
+    addGarmentMesh(group, toe, layer);
+  });
+}
+
+function addBagLayer(group: THREE.Group, layer: RenderableGarmentLayer) {
+  const width = layer.widthScale;
+  addBox(group, layer, [0.34, 0.42, 0.13], [0.68 * width, -0.2, 0.12], fabricMaterial(layer, 0.94));
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.012, 8, 32), accentMaterial(layer, 0.9));
+  handle.scale.y = 1.32;
+  handle.position.set(0.68 * width, 0.09, 0.13);
+  addGarmentMesh(group, handle, layer);
+}
+
+function createGarmentPreviewGroup(layers: RenderableGarmentLayer[]) {
+  const group = new THREE.Group();
+  group.name = 'stylefit-procedural-garments';
+
+  layers.forEach((layer) => {
+    if (layer.asset.shape === 'shirt' || layer.asset.shape === 'jacket') {
+      addTorsoLayer(group, layer);
+      return;
+    }
+
+    if (layer.asset.shape === 'trouser' || layer.asset.shape === 'skirt') {
+      addBottomLayer(group, layer);
+      return;
+    }
+
+    if (layer.asset.shape === 'shoe') {
+      addFootwearLayer(group, layer);
+      return;
+    }
+
+    if (layer.asset.shape === 'bag') {
+      addBagLayer(group, layer);
+    }
+  });
+
+  return group;
+}
+
 function addStage(scene: THREE.Scene) {
   const backdrop = new THREE.Mesh(
     new THREE.PlaneGeometry(4.7, 3.7),
@@ -265,10 +466,15 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
   const rotationStateRef = useRef({ yaw: INITIAL_YAW, pitch: INITIAL_PITCH });
   const gestureStartRef = useRef({ yaw: INITIAL_YAW, pitch: INITIAL_PITCH });
   const modelSource = activeAvatarModelSource(profile);
+  const garmentLayers = useMemo(() => getRenderableGarmentLayers(outfit, profile), [outfit, profile]);
+  const garmentLayerKey = useMemo(
+    () => garmentLayers.map((layer) => `${layer.itemId}:${layer.asset.assetKey}:${layer.primaryColor}:${layer.renderOrder}`).join('|'),
+    [garmentLayers],
+  );
   const emptyCopy = emptyStateCopy(profile);
   const modelKey = useMemo(
-    () => `${profile.avatarReconstructionStatus}-${String(modelSource ?? 'missing')}-${profile.gender}-${profile.heightCm}-${profile.weightKg}-${outfit.id}`,
-    [modelSource, outfit.id, profile.avatarReconstructionStatus, profile.gender, profile.heightCm, profile.weightKg],
+    () => `${profile.avatarReconstructionStatus}-${String(modelSource ?? 'missing')}-${profile.gender}-${profile.heightCm}-${profile.weightKg}-${outfit.id}-${garmentLayerKey}`,
+    [garmentLayerKey, modelSource, outfit.id, profile.avatarReconstructionStatus, profile.gender, profile.heightCm, profile.weightKg],
   );
   const panResponder = useMemo(
     () =>
@@ -373,6 +579,7 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
             prepareAvatarObject(loadedAvatar);
             fitAvatarToStage(loadedAvatar, fullScreen ? 3.12 : 3.05);
             root.add(loadedAvatar);
+            root.add(createGarmentPreviewGroup(garmentLayers));
 
             setLoadState('ready');
           },
@@ -401,7 +608,7 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
         renderer.dispose();
       };
     },
-    [fullScreen, modelSource],
+    [fullScreen, garmentLayers, modelSource],
   );
 
   return (

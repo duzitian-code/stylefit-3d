@@ -14,7 +14,7 @@
 - `expo-image-picker` 负责本人照片和衣服照片上传。
 - 本地状态保存个人数据、天气样例、衣橱单品和当前场景。
 - 推荐算法在端侧运行，按天气、体感、场景、颜色偏好、预算和衣橱缺口打分。
-- 3D 试穿预览使用 WebGL/Three.js viewer。当前本地保留一份演示人体 GLB，只用于验证模型加载、相机、灯光和渲染链路；默认预览不会展示该资产，生产环境必须加载服务端返回的 glTF/GLB avatar、face texture、garment mesh 和材质。
+- 3D 试穿预览使用 WebGL/Three.js viewer。当前默认加载本地 Preview Bundle mannequin，并把内置衣橱单品转换为 procedural garment layers 叠加到同一个旋转场景。生产环境应逐步替换为服务端返回的 glTF/GLB avatar、face texture、garment mesh 和材质。
 
 ## 生产级 3D 服务建议
 
@@ -37,6 +37,14 @@
 - provider 应返回 `provenance`，用于区分 `stylefit-digital-human`、`stylefit-production`、`stylefit-dev-baseline` 和演示资产，避免把开发基线或样例模型标成 AI 数字人。
 - provider 可返回 `queued` / `processing` + `jobId` 或 `pollUrl`，前端会短轮询等待 `ready`。
 
+## 当前 Garment 资产管线
+
+- `src/types.ts` 定义 `GarmentPreviewAsset`，描述服装来源、层级、挂点、shape、长度、袖长、版型余量和授权状态。
+- `src/logic/garmentAssets.ts` 把当前 outfit 转成可渲染层，按 base、outer、footwear、accessory 排序。
+- `TryOnModel3D` 在 avatar GLB 加载完成后创建 procedural 服装 mesh，跟 avatar 一起旋转。
+- 内置单品使用 `stylefit-procedural-preview`，这是项目自写的预览层，不依赖第三方付费 API。
+- 后续 Garment Service 返回真实 `garmentModelUri` 后，应优先加载真实 GLB，并保留 procedural layer 作为失败兜底。
+
 ## 数据边界
 
 - 端侧只保存必要的展示状态和低敏偏好。
@@ -47,7 +55,7 @@
 
 - 天气：从 mock 数据替换为高德、OpenWeather、Apple WeatherKit 或自建天气接口。
 - 商品：从 mock 商品库替换为聚合商品搜索服务。
-- 3D：当前 `AvatarPreview` 已通过 `expo-gl` + Three.js 加载 GLB；后续重点是接入服务端生成的 glTF/USDZ 模型和服装网格。
+- 3D：当前 `AvatarPreview` 已通过 `expo-gl` + Three.js 加载 GLB，并支持 procedural garment layers；后续重点是接入服务端生成的 glTF/USDZ 模型和服装网格。
 
 ## 真实 3D 建模边界
 

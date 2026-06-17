@@ -7,6 +7,7 @@
 - 本人照片上传入口和身高、体重、版型偏好配置。
 - 内置衣橱单品和商品推荐演示数据，开发环境可直接预览推荐流程。
 - WebGL 3D viewer，可加载本地演示 GLB 和后端返回的 avatar/garment 重建模型。
+- 内置衣橱单品已经接入 self-authored procedural 3D 服装预览层，可在同一个 3D 场景里叠加上衣、下装、外套、鞋和配饰。
 - 衣服照片上传入口和 3D 衣橱列表。
 - 天气、气温、场景驱动的穿搭推荐。
 - 基于个人数据、预算和衣橱缺口的商品推荐。
@@ -96,12 +97,16 @@ TripoSR 是 MIT 许可证的开源单图 3D 重建模型，可以作为实验性
 - `src/components/`：试穿预览、衣橱卡片、商品卡片等组件。
 - `src/data/mockData.ts`：初始衣橱、天气和商品数据。
 - `src/logic/reconstruction.ts`：照片到 3D 模型的重建输入/输出契约。
+- `src/logic/garmentAssets.ts`：服装 3D 预览资产契约、覆盖率和渲染层排序。
 - `src/logic/recommendations.ts`：穿搭和商品推荐逻辑。
+- `docs/GARMENT_ASSET_PIPELINE.md`：服装资产规范和从预览层升级到生产 GLB 的路线。
 - `docs/PRODUCT_REQUIREMENTS.md`：功能和需求设计。
 - `docs/ARCHITECTURE.md`：技术架构和后续真实 3D 服务规划。
 
 ## 3D 模型说明
 
 当前内置的 3D 预览资产来自 `workers/stylefit_avatar/models/mannequins/`，由项目里的参数化 mannequin 生成器自生成，用来验证 GLB 加载、灯光、相机、性别/版型切换和渲染链路。它不是用户照片重建结果，也不会被标记为真人身份模型。
+
+当前内置服装预览层来自 TypeScript 里的 procedural asset contract，用于表现衣服体积、颜色、层级和挂点。它不是真实布料仿真；生产阶段应由 Garment Service 返回有商业授权的 `garmentModelUri` / `garmentTextureUri`，再替换对应预览层。
 
 上传真人照片后，前端会进入生成状态并等待 API 返回 `avatarModelUri`。只有生产级 StyleFit 数字人 provider 返回 `provenance: "stylefit-digital-human"` 或同等生产 provenance 时，预览才会显示为“AI 数字人模型”。

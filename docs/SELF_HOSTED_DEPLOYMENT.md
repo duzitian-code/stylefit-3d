@@ -46,6 +46,13 @@ This starts:
 - Store generated assets in S3-compatible object storage and return signed or CDN URLs as `avatarModelUri` / `garmentModelUri`.
 - Cache generated avatars until the user deletes or regenerates them.
 
+## Garment Asset Rules
+
+- Built-in wardrobe items use self-authored procedural preview layers and can run fully offline.
+- Production garments should be generated or imported by a Garment Service and returned as `garmentModelUri` / `garmentTextureUri`.
+- Keep a manifest for owned or licensed garment GLBs with category, attachment region, unit scale, triangle count, material names, and commercial-use status.
+- Do not mark a garment production-ready if it only has `stylefit-procedural-preview`; that layer is for MVP try-on visualization and failure fallback.
+
 ## Production Rules
 
 - Never let the mobile app call model providers directly.
