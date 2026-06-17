@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { Image, Modal, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Maximize2, X } from 'lucide-react-native';
@@ -12,6 +12,8 @@ type AvatarPreviewProps = {
   outfit: Outfit;
   weather: WeatherSnapshot;
   onOpenFullscreen?: () => void;
+  controlSlot?: ReactNode;
+  compact?: boolean;
 };
 
 type AvatarFullscreenPreviewProps = {
@@ -166,7 +168,7 @@ function previewStatusText(profile: BodyProfile) {
   return hasRenderableModel(profile) ? '可进入试穿预览' : '上传照片后生成';
 }
 
-export function AvatarPreview({ profile, outfit, weather, onOpenFullscreen }: AvatarPreviewProps) {
+export function AvatarPreview({ profile, outfit, weather, onOpenFullscreen, controlSlot, compact = false }: AvatarPreviewProps) {
   const bodyBalance = bodyBalanceLabel(profile);
   const canOpenFullscreen = hasRenderableModel(profile);
 
@@ -198,13 +200,14 @@ export function AvatarPreview({ profile, outfit, weather, onOpenFullscreen }: Av
 
   return (
     <View style={styles.card}>
-      <LinearGradient colors={['#F7FAF8', '#E6EDE6']} style={styles.stage}>
+      <LinearGradient colors={['#F7FAF8', '#E6EDE6']} style={[styles.stage, compact && styles.stageCompact]}>
         <View style={styles.weatherBadge}>
           <Text style={styles.weatherText}>{weather.location} · {weather.feelsLikeC}°C</Text>
         </View>
         {expandControl}
-        <TryOnModel3D profile={profile} outfit={outfit} onOpenFullscreen={openFullscreen} showBadge={false} />
+        <TryOnModel3D profile={profile} outfit={outfit} compact={compact} onOpenFullscreen={openFullscreen} showBadge={false} />
       </LinearGradient>
+      {controlSlot ? <View style={styles.controlSlot}>{controlSlot}</View> : null}
       <View style={styles.details}>
         <View>
           <Text style={styles.modelKicker}>{genderLabel(profile)} · {profile.heightCm}cm · {bodyBalance}</Text>
@@ -307,6 +310,16 @@ const styles = StyleSheet.create({
     height: 560,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stageCompact: {
+    height: 420,
+  },
+  controlSlot: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: '#FBFCFA',
+    padding: spacing.md,
   },
   weatherBadge: {
     position: 'absolute',

@@ -443,6 +443,7 @@ export default function App() {
   const qualityLabel = tryOnQualityLabel(qualityScore);
   const tryOnSignals = useMemo(() => buildTryOnSignals(profile, outfit, weather), [outfit, profile, weather]);
   const selectedOccasionLabel = occasionOptions.find((option) => option.id === selectedOccasion)?.label ?? '通勤';
+  const selectedFitLabel = fitOptions.find((option) => option.id === fitPreference)?.label ?? '合体';
   const hasRenderableAvatar = profileHasRenderableModel(profile);
   const avatarReconstructionBusy = avatarReconstructionStatus === 'queued' || avatarReconstructionStatus === 'processing';
   const avatarButtonLabel = avatarGenerationButtonLabel({
@@ -583,6 +584,66 @@ export default function App() {
     setSelectedWeatherIndex((index) => (index + 1) % weatherOptions.length);
   }
 
+  function renderProfileControls() {
+    return (
+      <>
+        <View style={styles.segmentGroup}>
+          <Text style={styles.inputLabel}>模特性别</Text>
+          <View style={styles.segmentRow}>
+            {genderOptions.map((option) => (
+              <Pressable
+                key={option.id}
+                onPress={() => setGender(option.id)}
+                style={[styles.segment, gender === option.id && styles.segmentActive]}
+              >
+                <Text style={[styles.segmentLabel, gender === option.id && styles.segmentLabelActive]}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <View style={styles.inputRow}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>身高 cm</Text>
+            <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="numeric" style={styles.input} />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>体重 kg</Text>
+            <TextInput value={weightKg} onChangeText={setWeightKg} keyboardType="numeric" style={styles.input} />
+          </View>
+        </View>
+        <View style={styles.segmentRow}>
+          {fitOptions.map((option) => (
+            <Pressable
+              key={option.id}
+              onPress={() => setFitPreference(option.id)}
+              style={[styles.segment, fitPreference === option.id && styles.segmentActive]}
+            >
+              <Text style={[styles.segmentLabel, fitPreference === option.id && styles.segmentLabelActive]}>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Pressable onPress={pickAvatarPhoto} disabled={avatarReconstructionBusy} style={[styles.primaryButton, avatarReconstructionBusy && styles.primaryButtonDisabled]}>
+          <Camera color={colors.surface} size={18} strokeWidth={2.5} />
+          <Text style={styles.primaryButtonText}>{avatarButtonLabel}</Text>
+        </Pressable>
+        {avatarPhotoUri ? <Image source={{ uri: avatarPhotoUri }} style={styles.avatarThumb} /> : null}
+      </>
+    );
+  }
+
+  const mobileProfileControls = !wideTryOnLayout ? (
+    <View style={styles.inlineControlPanel}>
+      <View style={styles.inlineControlHeader}>
+        <View style={styles.inlineControlTitleRow}>
+          <UserRound color={colors.moss} size={17} strokeWidth={2.5} />
+          <Text style={styles.inlineControlTitle}>个人参数</Text>
+        </View>
+        <Text style={styles.inlineControlMeta}>{genderLabel(profile.gender)} · {selectedFitLabel}</Text>
+      </View>
+      {renderProfileControls()}
+    </View>
+  ) : undefined;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
@@ -615,11 +676,18 @@ export default function App() {
             {activeTab === 'tryOn' ? (
               <View style={[styles.tryOnWorkbench, wideTryOnLayout && styles.tryOnWorkbenchWide]}>
                 <View style={[styles.previewColumn, wideTryOnLayout && styles.previewColumnWide]}>
-                  <AvatarPreview profile={profile} outfit={outfit} weather={weather} onOpenFullscreen={() => setFullscreenPreviewVisible(true)} />
+                  <AvatarPreview
+                    profile={profile}
+                    outfit={outfit}
+                    weather={weather}
+                    compact={!wideTryOnLayout}
+                    controlSlot={mobileProfileControls}
+                    onOpenFullscreen={() => setFullscreenPreviewVisible(true)}
+                  />
                 </View>
                 <View style={[styles.controlColumn, wideTryOnLayout && styles.controlColumnWide]}>
                   <View style={styles.panel}>
-                    <SectionHeader title="试穿状态" eyebrow={`${genderProfileLabel(profile.gender)} · ${selectedOccasionLabel} · ${profile.fitPreference === 'tailored' ? '利落' : profile.fitPreference === 'relaxed' ? '宽松' : '合体'}`} Icon={Sparkles} />
+                    <SectionHeader title="试穿状态" eyebrow={`${genderProfileLabel(profile.gender)} · ${selectedOccasionLabel} · ${selectedFitLabel}`} Icon={Sparkles} />
                     <View style={styles.qualityScoreRow}>
                       <Text style={styles.qualityScore}>{qualityScore}%</Text>
                       <View style={styles.qualityScoreCopy}>
@@ -653,49 +721,12 @@ export default function App() {
                     <MetricCard label="轮廓" value={bodyBalanceLabel(profile)} Icon={UserRound} accent={colors.moss} />
                   </View>
 
-                  <View style={styles.panel}>
-                    <SectionHeader title="个人数据" eyebrow="数字人、尺码和商品筛选的当前输入。" Icon={UserRound} />
-                    <View style={styles.segmentGroup}>
-                      <Text style={styles.inputLabel}>模特性别</Text>
-                      <View style={styles.segmentRow}>
-                        {genderOptions.map((option) => (
-                          <Pressable
-                            key={option.id}
-                            onPress={() => setGender(option.id)}
-                            style={[styles.segment, gender === option.id && styles.segmentActive]}
-                          >
-                            <Text style={[styles.segmentLabel, gender === option.id && styles.segmentLabelActive]}>{option.label}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
+                  {wideTryOnLayout ? (
+                    <View style={styles.panel}>
+                      <SectionHeader title="个人数据" eyebrow={`${genderProfileLabel(profile.gender)} · ${selectedFitLabel}`} Icon={UserRound} />
+                      {renderProfileControls()}
                     </View>
-                    <View style={styles.inputRow}>
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>身高 cm</Text>
-                        <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="numeric" style={styles.input} />
-                      </View>
-                      <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>体重 kg</Text>
-                        <TextInput value={weightKg} onChangeText={setWeightKg} keyboardType="numeric" style={styles.input} />
-                      </View>
-                    </View>
-                    <View style={styles.segmentRow}>
-                      {fitOptions.map((option) => (
-                        <Pressable
-                          key={option.id}
-                          onPress={() => setFitPreference(option.id)}
-                          style={[styles.segment, fitPreference === option.id && styles.segmentActive]}
-                        >
-                          <Text style={[styles.segmentLabel, fitPreference === option.id && styles.segmentLabelActive]}>{option.label}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                    <Pressable onPress={pickAvatarPhoto} disabled={avatarReconstructionBusy} style={[styles.primaryButton, avatarReconstructionBusy && styles.primaryButtonDisabled]}>
-                      <Camera color={colors.surface} size={18} strokeWidth={2.5} />
-                      <Text style={styles.primaryButtonText}>{avatarButtonLabel}</Text>
-                    </Pressable>
-                    {avatarPhotoUri ? <Image source={{ uri: avatarPhotoUri }} style={styles.avatarThumb} /> : null}
-                  </View>
+                  ) : null}
 
                   <View style={styles.panel}>
                     <SectionHeader title="试穿判定" eyebrow={`${weather.location} · ${weather.feelsLikeC}°C · ${outfit.items.length} 件单品`} Icon={Check} />
@@ -933,6 +964,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
     gap: spacing.md,
+  },
+  inlineControlPanel: {
+    gap: spacing.md,
+  },
+  inlineControlHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  inlineControlTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  inlineControlTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  inlineControlMeta: {
+    color: colors.mutedInk,
+    fontSize: 12,
+    fontWeight: '800',
   },
   qualityScoreRow: {
     flexDirection: 'row',

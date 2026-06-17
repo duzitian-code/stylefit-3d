@@ -13,6 +13,7 @@ type TryOnModel3DProps = {
   profile: BodyProfile;
   outfit: Outfit;
   fullScreen?: boolean;
+  compact?: boolean;
   onOpenFullscreen?: () => void;
   showBadge?: boolean;
 };
@@ -460,7 +461,7 @@ function disposeObject(object: THREE.Object3D) {
   });
 }
 
-export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullscreen, showBadge = true }: TryOnModel3DProps) {
+export function TryOnModel3D({ profile, outfit, fullScreen = false, compact = false, onOpenFullscreen, showBadge = true }: TryOnModel3DProps) {
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const rotationTargetRef = useRef({ yaw: INITIAL_YAW, pitch: INITIAL_PITCH });
   const rotationStateRef = useRef({ yaw: INITIAL_YAW, pitch: INITIAL_PITCH });
@@ -473,8 +474,8 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
   );
   const emptyCopy = emptyStateCopy(profile);
   const modelKey = useMemo(
-    () => `${profile.avatarReconstructionStatus}-${String(modelSource ?? 'missing')}-${profile.gender}-${profile.heightCm}-${profile.weightKg}-${outfit.id}-${garmentLayerKey}`,
-    [garmentLayerKey, modelSource, outfit.id, profile.avatarReconstructionStatus, profile.gender, profile.heightCm, profile.weightKg],
+    () => `${profile.avatarReconstructionStatus}-${String(modelSource ?? 'missing')}-${profile.gender}-${profile.heightCm}-${profile.weightKg}-${outfit.id}-${garmentLayerKey}-${compact ? 'compact' : 'regular'}`,
+    [compact, garmentLayerKey, modelSource, outfit.id, profile.avatarReconstructionStatus, profile.gender, profile.heightCm, profile.weightKg],
   );
   const panResponder = useMemo(
     () =>
@@ -527,8 +528,8 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0xf7faf8);
       const camera = new THREE.PerspectiveCamera(fullScreen ? 34 : 32, width / Math.max(height, 1), 0.1, 100);
-      camera.position.set(0, fullScreen ? 0.38 : 0.52, fullScreen ? 7.15 : 6.35);
-      camera.lookAt(0, fullScreen ? -0.02 : 0.08, 0);
+      camera.position.set(0, fullScreen ? 0.38 : compact ? 0.32 : 0.52, fullScreen ? 7.15 : compact ? 7.35 : 6.35);
+      camera.lookAt(0, fullScreen ? -0.02 : compact ? -0.05 : 0.08, 0);
 
       scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d0c5, 2.55));
       const keyLight = new THREE.DirectionalLight(0xffffff, 2.1);
@@ -577,7 +578,7 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
 
             const loadedAvatar = gltf.scene;
             prepareAvatarObject(loadedAvatar);
-            fitAvatarToStage(loadedAvatar, fullScreen ? 3.12 : 3.05);
+            fitAvatarToStage(loadedAvatar, fullScreen ? 3.12 : compact ? 2.82 : 3.05);
             root.add(loadedAvatar);
             root.add(createGarmentPreviewGroup(garmentLayers));
 
@@ -608,7 +609,7 @@ export function TryOnModel3D({ profile, outfit, fullScreen = false, onOpenFullsc
         renderer.dispose();
       };
     },
-    [fullScreen, garmentLayers, modelSource],
+    [compact, fullScreen, garmentLayers, modelSource],
   );
 
   return (
