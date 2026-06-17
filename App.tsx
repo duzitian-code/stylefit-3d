@@ -18,7 +18,6 @@ import {
 import {
   Camera,
   Check,
-  CloudRain,
   CloudSun,
   Palette,
   Plus,
@@ -27,12 +26,9 @@ import {
   Shirt,
   ShoppingBag,
   Sparkles,
-  SunMedium,
-  Thermometer,
   Upload,
   UserRound,
   Weight,
-  Wind,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { AvatarFullscreenPreview, AvatarPreview } from './src/components/AvatarPreview';
@@ -54,16 +50,15 @@ import type {
   Occasion,
   Outfit,
   ReconstructionStatus,
-  WeatherCondition,
   WeatherSnapshot,
 } from './src/types';
 
-type TabId = 'tryOn' | 'closet' | 'weather' | 'shop';
+type TabId = 'tryOn' | 'closet' | 'looks' | 'shop';
 
 const tabs: { id: TabId; label: string; Icon: typeof Sparkles }[] = [
   { id: 'tryOn', label: '试穿', Icon: Sparkles },
   { id: 'closet', label: '衣橱', Icon: Shirt },
-  { id: 'weather', label: '天气', Icon: CloudSun },
+  { id: 'looks', label: '搭配', Icon: Palette },
   { id: 'shop', label: '商品', Icon: ShoppingBag },
 ];
 
@@ -95,14 +90,6 @@ const categoryOptions: { id: ClothingCategory; label: string }[] = [
   { id: 'accessory', label: '配饰' },
 ];
 
-const weatherIcon: Record<WeatherCondition, typeof SunMedium> = {
-  sunny: SunMedium,
-  cloudy: CloudSun,
-  rainy: CloudRain,
-  windy: Wind,
-  cold: Thermometer,
-};
-
 const PREVIEW_BUNDLE_PIPELINE = 'stylefit-parametric-preview-bundle';
 
 type TryOnSignal = {
@@ -112,6 +99,61 @@ type TryOnSignal = {
   Icon: typeof Sparkles;
   accent: string;
 };
+
+type OutfitItemOverrides = Partial<Record<ClothingCategory, string | null>>;
+
+const editableOutfitSlots: { id: ClothingCategory; label: string; optional?: boolean }[] = [
+  { id: 'top', label: '上装' },
+  { id: 'bottom', label: '下装' },
+  { id: 'outerwear', label: '外套', optional: true },
+  { id: 'shoes', label: '鞋履' },
+  { id: 'accessory', label: '配饰', optional: true },
+];
+
+function hasOwnOverride(overrides: OutfitItemOverrides, category: ClothingCategory) {
+  return Object.prototype.hasOwnProperty.call(overrides, category);
+}
+
+function hasManualOutfitOverrides(overrides: OutfitItemOverrides) {
+  return editableOutfitSlots.some((slot) => hasOwnOverride(overrides, slot.id));
+}
+
+function applyOutfitOverrides(recommendedOutfit: Outfit, wardrobe: ClothingItem[], overrides: OutfitItemOverrides): Outfit {
+  if (!hasManualOutfitOverrides(overrides)) {
+    return recommendedOutfit;
+  }
+
+  const recommendedByCategory = recommendedOutfit.items.reduce<Partial<Record<ClothingCategory, ClothingItem>>>((collection, item) => {
+    collection[item.category] = item;
+    return collection;
+  }, {});
+
+  const items = editableOutfitSlots
+    .map((slot) => {
+      if (!hasOwnOverride(overrides, slot.id)) {
+        return recommendedByCategory[slot.id];
+      }
+
+      const selectedId = overrides[slot.id];
+      return selectedId ? wardrobe.find((item) => item.id === selectedId && item.category === slot.id) : undefined;
+    })
+    .filter((item): item is ClothingItem => Boolean(item));
+
+  const averageWarmth = items.reduce((total, item) => total + item.warmth, 0) / Math.max(items.length, 1);
+
+  return {
+    ...recommendedOutfit,
+    id: `edited-${recommendedOutfit.id}-${items.map((item) => item.id).join('-')}`,
+    title: '当前试穿组合',
+    summary: items.map((item) => item.name).join(' · '),
+    items,
+    warmthScore: Number(Math.min(10, Math.max(1, averageWarmth)).toFixed(1)),
+    stylingNotes: [
+      '已按当前槽位选择更新 3D 试穿预览。',
+      ...recommendedOutfit.stylingNotes.filter((note) => !note.startsWith('已按当前槽位')),
+    ],
+  };
+}
 
 function clampScore(value: number) {
   return Math.min(98, Math.max(8, Math.round(value)));
@@ -321,9 +363,9 @@ function buildTryOnSignals(profile: BodyProfile, outfit: Outfit, weather: Weathe
       accent: colors.denim,
     },
     {
-      label: '环境适配',
+      label: '场景适配',
       value: `${outfit.weatherFitScore}%`,
-      detail: `${weather.location} · 体感 ${weather.feelsLikeC}°C`,
+      detail: `体感 ${weather.feelsLikeC}°C 已纳入推荐`,
       Icon: CloudSun,
       accent: colors.saffron,
     },
@@ -384,6 +426,7 @@ export default function App() {
   const [avatarDigitalHumanAssetKey, setAvatarDigitalHumanAssetKey] = useState<string | undefined>(initialProfile.avatarDigitalHumanAssetKey);
   const [faceTextureUri, setFaceTextureUri] = useState<string | undefined>(initialProfile.faceTextureUri);
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>(wardrobeSeed);
+  const [outfitItemOverrides, setOutfitItemOverrides] = useState<OutfitItemOverrides>({});
   const [selectedWeatherIndex, setSelectedWeatherIndex] = useState(0);
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion>('commute');
   const [newClothingCategory, setNewClothingCategory] = useState<ClothingCategory>('top');
@@ -433,7 +476,9 @@ export default function App() {
   );
 
   const weather = weatherOptions[selectedWeatherIndex];
-  const outfit = useMemo(() => generateOutfit(wardrobe, weather, selectedOccasion, profile), [profile, selectedOccasion, wardrobe, weather]);
+  const recommendedOutfit = useMemo(() => generateOutfit(wardrobe, weather, selectedOccasion, profile), [profile, selectedOccasion, wardrobe, weather]);
+  const outfit = useMemo(() => applyOutfitOverrides(recommendedOutfit, wardrobe, outfitItemOverrides), [outfitItemOverrides, recommendedOutfit, wardrobe]);
+  const hasManualOutfit = hasManualOutfitOverrides(outfitItemOverrides);
   const products = useMemo(
     () => recommendProducts(productCatalog, wardrobe, weather, selectedOccasion, profile),
     [profile, selectedOccasion, wardrobe, weather],
@@ -584,6 +629,17 @@ export default function App() {
     setSelectedWeatherIndex((index) => (index + 1) % weatherOptions.length);
   }
 
+  function updateOutfitSlot(category: ClothingCategory, itemId: string | null) {
+    setOutfitItemOverrides((current) => ({
+      ...current,
+      [category]: itemId,
+    }));
+  }
+
+  function resetOutfitSlots() {
+    setOutfitItemOverrides({});
+  }
+
   function renderProfileControls() {
     return (
       <>
@@ -631,16 +687,77 @@ export default function App() {
     );
   }
 
-  const mobileProfileControls = !wideTryOnLayout ? (
-    <View style={styles.inlineControlPanel}>
-      <View style={styles.inlineControlHeader}>
-        <View style={styles.inlineControlTitleRow}>
-          <UserRound color={colors.moss} size={17} strokeWidth={2.5} />
-          <Text style={styles.inlineControlTitle}>个人参数</Text>
+  function renderOutfitEditor() {
+    return (
+      <View style={styles.outfitEditor}>
+        <View style={styles.outfitEditorHeader}>
+          <View>
+            <Text style={styles.outfitEditorTitle}>当前穿搭</Text>
+            <Text style={styles.outfitEditorMeta}>{hasManualOutfit ? '手动编辑中' : `${selectedOccasionLabel}推荐组合`}</Text>
+          </View>
+          <Pressable onPress={resetOutfitSlots} style={[styles.compactButton, !hasManualOutfit && styles.compactButtonDisabled]} disabled={!hasManualOutfit}>
+            <RefreshCw color={hasManualOutfit ? colors.moss : colors.mutedInk} size={15} strokeWidth={2.4} />
+            <Text style={[styles.compactButtonText, !hasManualOutfit && styles.compactButtonTextDisabled]}>推荐一套</Text>
+          </Pressable>
         </View>
-        <Text style={styles.inlineControlMeta}>{genderLabel(profile.gender)} · {selectedFitLabel}</Text>
+        <View style={styles.outfitSlotList}>
+          {editableOutfitSlots.map((slot) => {
+            const selectedItem = outfit.items.find((item) => item.category === slot.id);
+            const options = wardrobe.filter((item) => item.category === slot.id);
+
+            return (
+              <View key={slot.id} style={styles.outfitSlot}>
+                <View style={styles.outfitSlotHeader}>
+                  <Text style={styles.outfitSlotLabel}>{slot.label}</Text>
+                  <Text style={styles.outfitSlotValue} numberOfLines={1}>{selectedItem?.name ?? '未选择'}</Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.outfitOptionScroller}>
+                  {slot.optional ? (
+                    <Pressable
+                      onPress={() => updateOutfitSlot(slot.id, null)}
+                      style={[styles.outfitOption, !selectedItem && styles.outfitOptionActive]}
+                    >
+                      <Text style={[styles.outfitOptionText, !selectedItem && styles.outfitOptionTextActive]}>不穿</Text>
+                    </Pressable>
+                  ) : null}
+                  {options.map((item) => {
+                    const active = selectedItem?.id === item.id;
+                    const readyLabel = itemHasRenderableGarment(item) ? '3D' : '待建模';
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => updateOutfitSlot(slot.id, item.id)}
+                        style={[styles.outfitOption, active && styles.outfitOptionActive]}
+                      >
+                        <View style={[styles.outfitOptionSwatch, { backgroundColor: item.palette[0] ?? colors.cloud }]} />
+                        <Text style={[styles.outfitOptionText, active && styles.outfitOptionTextActive]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[styles.outfitOptionBadge, active && styles.outfitOptionBadgeActive]}>{readyLabel}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            );
+          })}
+        </View>
       </View>
-      {renderProfileControls()}
+    );
+  }
+
+  const mobileProfileControls = !wideTryOnLayout ? (
+    <View style={styles.mobileControlStack}>
+      {renderOutfitEditor()}
+      <View style={styles.inlineControlPanel}>
+        <View style={styles.inlineControlHeader}>
+          <View style={styles.inlineControlTitleRow}>
+            <UserRound color={colors.moss} size={17} strokeWidth={2.5} />
+            <Text style={styles.inlineControlTitle}>个人参数</Text>
+          </View>
+          <Text style={styles.inlineControlMeta}>{genderLabel(profile.gender)} · {selectedFitLabel}</Text>
+        </View>
+        {renderProfileControls()}
+      </View>
     </View>
   ) : undefined;
 
@@ -657,7 +774,7 @@ export default function App() {
               <View style={styles.heroText}>
                 <Text style={styles.kicker}>StyleFit 3D</Text>
                 <Text style={styles.heroTitle}>今日穿搭模型</Text>
-                <Text style={styles.heroSubtitle}>个人数据、衣橱、天气和商品推荐已经串成第一版试穿流程。</Text>
+                <Text style={styles.heroSubtitle}>个人数字人、衣橱、场景和商品推荐已经串成第一版试穿流程。</Text>
               </View>
             </View>
 
@@ -686,6 +803,12 @@ export default function App() {
                   />
                 </View>
                 <View style={[styles.controlColumn, wideTryOnLayout && styles.controlColumnWide]}>
+                  {wideTryOnLayout ? (
+                    <View style={styles.panel}>
+                      {renderOutfitEditor()}
+                    </View>
+                  ) : null}
+
                   <View style={styles.panel}>
                     <SectionHeader title="试穿状态" eyebrow={`${genderProfileLabel(profile.gender)} · ${selectedOccasionLabel} · ${selectedFitLabel}`} Icon={Sparkles} />
                     <View style={styles.qualityScoreRow}>
@@ -729,7 +852,7 @@ export default function App() {
                   ) : null}
 
                   <View style={styles.panel}>
-                    <SectionHeader title="试穿判定" eyebrow={`${weather.location} · ${weather.feelsLikeC}°C · ${outfit.items.length} 件单品`} Icon={Check} />
+                    <SectionHeader title="试穿判定" eyebrow={`${selectedOccasionLabel} · ${outfit.items.length} 件单品`} Icon={Check} />
                     {outfit.stylingNotes.map((note) => (
                       <View key={note} style={styles.noteRow}>
                         <View style={styles.noteDot} />
@@ -769,23 +892,10 @@ export default function App() {
               </View>
             ) : null}
 
-            {activeTab === 'weather' ? (
+            {activeTab === 'looks' ? (
               <View style={styles.stack}>
                 <View style={styles.panel}>
-                  <SectionHeader title="天气推荐" eyebrow="每天根据气温、体感、风雨和场景自动生成穿搭模型。" Icon={CloudSun} />
-                  <View style={styles.weatherGrid}>
-                    {weatherOptions.map((option, index) => {
-                      const Icon = weatherIcon[option.condition];
-                      const active = selectedWeatherIndex === index;
-                      return (
-                        <Pressable key={option.location} onPress={() => setSelectedWeatherIndex(index)} style={[styles.weatherCard, active && styles.weatherCardActive]}>
-                          <Icon color={active ? colors.moss : colors.mutedInk} size={22} strokeWidth={2.5} />
-                          <Text style={styles.weatherCity}>{option.location}</Text>
-                          <Text style={styles.weatherTemp}>{option.feelsLikeC}°C</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+                  <SectionHeader title="搭配方案" eyebrow="以衣橱和场景为主，环境信息只参与推荐权重。" Icon={Palette} />
                   <View style={styles.segmentRowWrap}>
                     {occasionOptions.map((option) => (
                       <Pressable
@@ -797,10 +907,22 @@ export default function App() {
                       </Pressable>
                     ))}
                   </View>
-                  <Pressable onPress={rotateWeather} style={styles.secondaryButton}>
-                    <RefreshCw color={colors.moss} size={18} strokeWidth={2.5} />
-                    <Text style={styles.secondaryButtonText}>切换天气样例</Text>
-                  </Pressable>
+                  <View style={styles.contextStrip}>
+                    <View style={styles.contextIcon}>
+                      <CloudSun color={colors.saffron} size={18} strokeWidth={2.5} />
+                    </View>
+                    <View style={styles.contextCopy}>
+                      <Text style={styles.contextLabel}>推荐上下文</Text>
+                      <Text style={styles.contextText}>{weather.location} · 体感 {weather.feelsLikeC}°C · 只作为排序因子</Text>
+                    </View>
+                    <Pressable onPress={rotateWeather} style={styles.contextButton}>
+                      <RefreshCw color={colors.moss} size={15} strokeWidth={2.5} />
+                      <Text style={styles.contextButtonText}>换样例</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <View style={styles.panel}>
+                  {renderOutfitEditor()}
                 </View>
                 <View style={styles.panel}>
                   <SectionHeader title="推荐理由" Icon={Check} />
@@ -951,6 +1073,120 @@ const styles = StyleSheet.create({
     flex: 0.82,
     minWidth: 390,
     maxWidth: 560,
+  },
+  mobileControlStack: {
+    gap: spacing.lg,
+  },
+  outfitEditor: {
+    gap: spacing.md,
+  },
+  outfitEditorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  outfitEditorTitle: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  outfitEditorMeta: {
+    color: colors.mutedInk,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  compactButton: {
+    minHeight: 34,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#2D6A4F30',
+    backgroundColor: '#2D6A4F10',
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  compactButtonDisabled: {
+    opacity: 0.56,
+  },
+  compactButtonText: {
+    color: colors.moss,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  compactButtonTextDisabled: {
+    color: colors.mutedInk,
+  },
+  outfitSlotList: {
+    gap: spacing.md,
+  },
+  outfitSlot: {
+    gap: spacing.xs,
+  },
+  outfitSlotHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  outfitSlotLabel: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  outfitSlotValue: {
+    flex: 1,
+    color: colors.mutedInk,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+  outfitOptionScroller: {
+    gap: spacing.sm,
+    paddingRight: spacing.md,
+  },
+  outfitOption: {
+    minHeight: 42,
+    maxWidth: 168,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  outfitOptionActive: {
+    borderColor: colors.moss,
+    backgroundColor: '#A8D5BA33',
+  },
+  outfitOptionSwatch: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#00000020',
+  },
+  outfitOptionText: {
+    flexShrink: 1,
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  outfitOptionTextActive: {
+    color: colors.moss,
+  },
+  outfitOptionBadge: {
+    color: colors.mutedInk,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  outfitOptionBadgeActive: {
+    color: colors.moss,
   },
   metricsRow: {
     flexDirection: 'row',
@@ -1185,6 +1421,57 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  contextStrip: {
+    minHeight: 64,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.canvas,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  contextIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E7B10A1F',
+  },
+  contextCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  contextLabel: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  contextText: {
+    color: colors.mutedInk,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  contextButton: {
+    minHeight: 34,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#2D6A4F30',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  contextButtonText: {
+    color: colors.moss,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   categoryChip: {
     minHeight: 38,
     borderRadius: radius.md,
@@ -1210,35 +1497,6 @@ const styles = StyleSheet.create({
   wardrobeScroller: {
     gap: spacing.md,
     paddingRight: spacing.lg,
-  },
-  weatherGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  weatherCard: {
-    width: '47.8%',
-    minHeight: 102,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.canvas,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  weatherCardActive: {
-    backgroundColor: '#A8D5BA33',
-    borderColor: colors.moss,
-  },
-  weatherCity: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  weatherTemp: {
-    color: colors.mutedInk,
-    fontSize: 12,
-    fontWeight: '700',
   },
   noteRow: {
     flexDirection: 'row',

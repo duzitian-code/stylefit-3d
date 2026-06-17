@@ -13,7 +13,7 @@
 
 - `expo-image-picker` 负责本人照片和衣服照片上传。
 - 本地状态保存个人数据、天气样例、衣橱单品和当前场景。
-- 推荐算法在端侧运行，按天气、体感、场景、颜色偏好、预算和衣橱缺口打分。
+- 推荐算法在端侧运行，按衣橱、场景、颜色偏好、预算、身体数据和环境上下文打分。天气数据只作为推荐权重，不作为主要产品入口。
 - 3D 试穿预览使用 WebGL/Three.js viewer。当前默认加载本地 Preview Bundle mannequin，并把内置衣橱单品转换为 procedural garment layers 叠加到同一个旋转场景。生产环境应逐步替换为服务端返回的 glTF/GLB avatar、face texture、garment mesh 和材质。
 
 ## 生产级 3D 服务建议
@@ -53,7 +53,7 @@
 
 ## 可替换模块
 
-- 天气：从 mock 数据替换为高德、OpenWeather、Apple WeatherKit 或自建天气接口。
+- 环境上下文：从 mock 数据替换为高德、OpenWeather、Apple WeatherKit 或自建接口，但只服务于穿搭排序和保暖/防雨权重。
 - 商品：从 mock 商品库替换为聚合商品搜索服务。
 - 3D：当前 `AvatarPreview` 已通过 `expo-gl` + Three.js 加载 GLB，并支持 procedural garment layers；后续重点是接入服务端生成的 glTF/USDZ 模型和服装网格。
 

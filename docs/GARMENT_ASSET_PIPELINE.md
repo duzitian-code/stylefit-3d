@@ -18,7 +18,7 @@ Real production garments should still return `garmentModelUri` and `garmentTextu
 
 ## Runtime Flow
 
-1. `generateOutfit` selects wardrobe items for the current weather and occasion.
+1. `generateOutfit` selects wardrobe items for the current occasion, closet state, body profile, and weather context.
 2. `getRenderableGarmentLayers` converts selected items into ordered 3D layers.
 3. `TryOnModel3D` loads the avatar GLB and adds procedural garment meshes into the same rotating scene root.
 4. The try-on status panel reports whether clothing coverage comes from real GLB assets or procedural preview layers.

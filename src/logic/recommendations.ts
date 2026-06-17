@@ -106,10 +106,10 @@ export function generateOutfit(wardrobe: ClothingItem[], weather: WeatherSnapsho
   const waterproofItems = picks.filter((item) => item.waterproof).length;
 
   const stylingNotes = [
-    `${weather.location}体感 ${weather.feelsLikeC}°C，整体保暖目标为 ${targetWarmth(weather)}/10。`,
+    `已把${weather.location}体感 ${weather.feelsLikeC}°C 作为推荐权重，整体保暖目标为 ${targetWarmth(weather)}/10。`,
     weather.condition === 'rainy' && waterproofItems === 0
       ? '建议补一件防泼水单品，避免雨天材质变形。'
-      : '当前组合的天气适配度较高，可直接保存为今日方案。',
+      : '当前组合在场景、版型和环境权重下表现稳定，可直接保存为今日方案。',
     profile.fitPreference === 'tailored'
       ? '版型建议保持腰线和肩线清晰，增强试穿模型的利落感。'
       : '版型建议保留适度余量，提升日常活动舒适度。',
@@ -118,7 +118,7 @@ export function generateOutfit(wardrobe: ClothingItem[], weather: WeatherSnapsho
 
   return {
     id: `${weather.condition}-${occasion}-${picks.map((item) => item.id).join('-')}`,
-    title: shouldUseOuterwear(weather) ? '天气适配叠穿' : '轻量通勤造型',
+    title: shouldUseOuterwear(weather) ? '场景适配叠穿' : '轻量通勤造型',
     summary: picks.map((item) => item.name).join(' · '),
     items: picks,
     warmthScore: Number(Math.min(10, Math.max(1, averageWarmth)).toFixed(1)),

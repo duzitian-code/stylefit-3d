@@ -221,7 +221,7 @@ export function AvatarPreview({ profile, outfit, weather, onOpenFullscreen, cont
           </View>
           <View style={styles.statPill}>
             <Text style={styles.statValue}>{outfit.weatherFitScore}%</Text>
-            <Text style={styles.statLabel}>天气适配</Text>
+            <Text style={styles.statLabel}>搭配适配</Text>
           </View>
           <View style={styles.statPill}>
             <Text style={styles.statValue}>{bodyBalance}</Text>
